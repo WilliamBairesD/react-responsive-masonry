@@ -7,9 +7,27 @@ class Masonry extends React.Component {
     this.state = {columns: [], childRefs: [], hasDistributed: false}
   }
 
-  componentDidUpdate() {
-    if (!this.state.hasDistributed && !this.props.sequential)
-      this.distributeChildren()
+  componentDidMount() {
+    this.observer = new ResizeObserver(() => {
+      if (this.state.hasDistributed || this.props.sequential) return
+
+      const isReady = this.state.childRefs.every(
+        (ref) => ref.current && ref.current.getBoundingClientRect().height > 0
+      )
+      console.log({isReady})
+
+      if (isReady) {
+        this.distributeChildren()
+      }
+    })
+
+    this.state.childRefs.forEach((ref) => {
+      if (ref.current) this.observer.observe(ref.current)
+    })
+  }
+
+  componentWillUnmount() {
+    this.observer && this.observer.disconnect()
   }
 
   static getDerivedStateFromProps(props, state) {
@@ -23,22 +41,9 @@ class Masonry extends React.Component {
     }
   }
 
-  shouldComponentUpdate(nextProps) {
-    return (
-      nextProps.children !== this.state.children ||
-      nextProps.columnsCount !== this.props.columnsCount
-    )
-  }
-
   distributeChildren() {
     const {children, columnsCount} = this.props
     const columnHeights = Array(columnsCount).fill(0)
-
-    const isReady = this.state.childRefs.every(
-      (ref) => ref.current.getBoundingClientRect().height
-    )
-
-    if (!isReady) return
 
     const columns = Array.from({length: columnsCount}, () => [])
     let validIndex = 0
